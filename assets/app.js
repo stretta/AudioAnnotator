@@ -16,6 +16,9 @@ const elements = {
   title: document.querySelector("#track-title"),
   meta: document.querySelector("#track-meta"),
   sourceBadge: document.querySelector("#source-badge"),
+  debugPanel: document.querySelector("#debug-panel"),
+  debugSourceUrl: document.querySelector("#debug-source-url"),
+  debugAudioUrl: document.querySelector("#debug-audio-url"),
   messagePanel: document.querySelector("#message-panel"),
   playerPanel: document.querySelector("#player-panel"),
   audio: document.querySelector("#audio-player"),
@@ -42,7 +45,7 @@ async function init() {
 
   showMessage("Loading track", "Fetching annotation data and preparing the audio player.", "loading");
 
-  const { rows, sourceLabel } = await loadRows(params);
+  const { rows, sourceLabel, sourceUrl } = await loadRows(params);
   if (rows.length === 0) {
     showError("Missing data", "The selected data source did not contain any rows.");
     return;
@@ -56,7 +59,7 @@ async function init() {
 
   try {
     const track = buildTrack(trackRows, trackId);
-    renderTrack(track, sourceLabel);
+    renderTrack(track, sourceLabel, sourceUrl);
   } catch (error) {
     showError("Invalid track data", error.message || "The selected track could not be parsed.");
   }
@@ -96,7 +99,7 @@ async function loadRows(params) {
 
       const resolvedUrl = response.url || new URL(source.url, window.location.href).href;
       const rows = await parseRowsFromResponse(response, resolvedUrl);
-      return { rows: normalizeRows(rows, resolvedUrl), sourceLabel: source.label };
+      return { rows: normalizeRows(rows, resolvedUrl), sourceLabel: source.label, sourceUrl: resolvedUrl };
     } catch (error) {
       failures.push(`${source.label}: ${error.message}`);
     }
@@ -185,7 +188,7 @@ function buildTrack(trackRows, trackId) {
   };
 }
 
-function renderTrack(track, sourceLabel) {
+function renderTrack(track, sourceLabel, sourceUrl) {
   annotations = track.annotations;
   activeIndex = -1;
 
@@ -194,6 +197,9 @@ function renderTrack(track, sourceLabel) {
   elements.annotationCount.textContent = `${annotations.length} cues`;
   elements.sourceBadge.hidden = false;
   elements.sourceBadge.textContent = sourceLabel;
+  elements.debugPanel.hidden = false;
+  elements.debugSourceUrl.textContent = sourceUrl;
+  elements.debugAudioUrl.textContent = track.audioUrl;
   elements.playerPanel.hidden = false;
   elements.messagePanel.hidden = true;
   elements.annotationList.innerHTML = "";
@@ -297,6 +303,7 @@ function showError(title, body) {
   elements.title.textContent = "Canvas Audio Annotator";
   elements.meta.textContent = "Unable to display the requested track.";
   elements.playerPanel.hidden = true;
+  elements.debugPanel.hidden = true;
   showMessage(title, body, "error");
 }
 
