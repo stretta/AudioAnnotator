@@ -44,7 +44,7 @@ body.landing-page {
 .player-card,
 .landing-card {
   width: min(100%, 760px);
-  margin: 0 auto;
+  margin: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
