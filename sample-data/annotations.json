@@ -1,0 +1,58 @@
+[
+  {
+    "track_id": "piece1",
+    "title": "String Quartet Demo",
+    "audio_url": "./audio/piece1.wav",
+    "start_seconds": 3,
+    "label": "Opening texture",
+    "comment": "Listen to the initial registral spacing"
+  },
+  {
+    "track_id": "piece1",
+    "title": "String Quartet Demo",
+    "audio_url": "./audio/piece1.wav",
+    "start_seconds": 12,
+    "label": "Strings enter",
+    "comment": "Listen to the cello and viola voicing here"
+  },
+  {
+    "track_id": "piece1",
+    "title": "String Quartet Demo",
+    "audio_url": "./audio/piece1.wav",
+    "start_seconds": 24,
+    "label": "Texture shift",
+    "comment": "Notice the divisi writing"
+  },
+  {
+    "track_id": "piece1",
+    "title": "String Quartet Demo",
+    "audio_url": "./audio/piece1.wav",
+    "start_seconds": 31,
+    "label": "Cadential energy",
+    "comment": "Listen for the intensification in repeated gesture"
+  },
+  {
+    "track_id": "piece2",
+    "title": "Brass Chorale Demo",
+    "audio_url": "./audio/piece2.wav",
+    "start_seconds": 2,
+    "label": "Opening brass",
+    "comment": "Notice the spacing in the voicing"
+  },
+  {
+    "track_id": "piece2",
+    "title": "Brass Chorale Demo",
+    "audio_url": "./audio/piece2.wav",
+    "start_seconds": 11,
+    "label": "Inner motion",
+    "comment": "Listen to the horn movement against the sustained tones"
+  },
+  {
+    "track_id": "piece2",
+    "title": "Brass Chorale Demo",
+    "audio_url": "./audio/piece2.wav",
+    "start_seconds": 21,
+    "label": "Climactic arrival",
+    "comment": "Notice the dynamic and registral expansion"
+  }
+]

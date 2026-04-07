@@ -1,0 +1,8 @@
+track_id,title,audio_url,start_seconds,label,comment
+piece1,String Quartet Demo,./audio/piece1.wav,3,Opening texture,Listen to the initial registral spacing
+piece1,String Quartet Demo,./audio/piece1.wav,12,Strings enter,Listen to the cello and viola voicing here
+piece1,String Quartet Demo,./audio/piece1.wav,24,Texture shift,Notice the divisi writing
+piece1,String Quartet Demo,./audio/piece1.wav,31,Cadential energy,Listen for the intensification in repeated gesture
+piece2,Brass Chorale Demo,./audio/piece2.wav,2,Opening brass,Notice the spacing in the voicing
+piece2,Brass Chorale Demo,./audio/piece2.wav,11,Inner motion,Listen to the horn movement against the sustained tones
+piece2,Brass Chorale Demo,./audio/piece2.wav,21,Climactic arrival,Notice the dynamic and registral expansion

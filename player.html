@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Canvas Audio Annotator</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="player-card" aria-live="polite">
+        <div class="status-row">
+          <p class="eyebrow">Canvas Audio Annotator</p>
+          <span id="source-badge" class="source-badge" hidden></span>
+        </div>
+        <header class="player-header">
+          <h1 id="track-title">Loading track…</h1>
+          <p id="track-meta" class="track-meta">Preparing the player.</p>
+        </header>
+
+        <section id="message-panel" class="message-panel" hidden></section>
+
+        <section id="player-panel" hidden>
+          <audio id="audio-player" controls preload="metadata" class="audio-player">
+            Your browser does not support HTML audio playback.
+          </audio>
+
+          <section class="annotation-section" aria-labelledby="annotation-heading">
+            <div class="annotation-header">
+              <h2 id="annotation-heading">Annotations</h2>
+              <span id="annotation-count" class="annotation-count"></span>
+            </div>
+            <ol id="annotation-list" class="annotation-list"></ol>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./assets/app.js"></script>
+  </body>
+</html>
