@@ -67,22 +67,23 @@ async function loadRows(params) {
   const sheetParam = (params.get("sheet") || "").trim();
   const dataParam = (params.get("data") || "").trim();
   const gid = (params.get("gid") || "").trim();
+  const explicitSourceRequested = Boolean(sheetParam || dataParam);
 
   if (sheetParam) {
     sources.push({
       label: "Published Google Sheet",
       url: normalizeSheetUrl(sheetParam, gid),
-      sticky: true,
     });
   } else if (dataParam) {
     sources.push({
       label: "Custom data source",
       url: dataParam,
-      sticky: true,
     });
   }
 
-  sources.push(...FALLBACK_SOURCES);
+  if (!explicitSourceRequested) {
+    sources.push(...FALLBACK_SOURCES);
+  }
 
   const failures = [];
 
@@ -99,6 +100,10 @@ async function loadRows(params) {
     } catch (error) {
       failures.push(`${source.label}: ${error.message}`);
     }
+  }
+
+  if (explicitSourceRequested) {
+    throw new Error(`Unable to load the requested data source. ${failures.join(" ")}`);
   }
 
   throw new Error(`Unable to load annotation data. ${failures.join(" ")}`);
