@@ -137,30 +137,6 @@ body.landing-page {
   line-height: 1.45;
 }
 
-.debug-panel {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
-  background: var(--surface-muted);
-}
-
-.debug-line {
-  margin: 0;
-  font-size: 0.8rem;
-  line-height: 1.45;
-  color: var(--text-muted);
-  overflow-wrap: anywhere;
-}
-
-.debug-line + .debug-line {
-  margin-top: 6px;
-}
-
-.debug-line strong {
-  color: var(--text);
-}
-
 .audio-player {
   width: 100%;
   margin-top: 14px;
