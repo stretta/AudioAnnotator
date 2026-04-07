@@ -2,6 +2,13 @@
 
 A compact static web app for embedding annotated audio examples inside Canvas LMS via iframe.
 
+## Production-ready v1 additions
+
+- npm scripts for local development, linting, and tests
+- a tiny built-in static dev server so local setup does not depend on Python
+- extracted core parsing and normalization logic for easier maintenance
+- basic regression tests around CSV parsing, URL normalization, and track building
+
 ## Stack recommendation
 
 Use plain HTML, CSS, and JavaScript for v1.
@@ -43,7 +50,14 @@ This project has one small page, no routing, no state complexity, and a strong p
 
 Because the app uses `fetch()`, run it from a local static server instead of opening the HTML file directly.
 
-Example with Python:
+Example with npm:
+
+```bash
+npm install
+npm run dev
+```
+
+Or with Python:
 
 ```bash
 python3 -m http.server 4173
@@ -53,6 +67,14 @@ Then open:
 
 ```text
 http://localhost:4173/player.html?track=piece1
+```
+
+## Scripts
+
+```bash
+npm run dev
+npm run lint
+npm test
 ```
 
 You can also use the landing page at:

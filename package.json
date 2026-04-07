@@ -1,0 +1,22 @@
+{
+  "name": "audio-annotator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static audio annotation player for Canvas embeds.",
+  "scripts": {
+    "dev": "node scripts/dev-server.js",
+    "start": "node scripts/dev-server.js",
+    "lint": "eslint .",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "eslint": "^9.37.0"
+  },
+  "dependencies": {
+    "wavesurfer.js": "^7.12.5"
+  }
+}
