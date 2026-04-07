@@ -1,16 +1,13 @@
-const REQUIRED_COLUMNS = [
-  "track_id",
-  "title",
-  "audio_url",
-  "start_seconds",
-  "label",
-  "comment",
-];
-
-const FALLBACK_SOURCES = [
-  { label: "Local sample JSON", url: "./sample-data/annotations.json" },
-  { label: "Local sample CSV", url: "./sample-data/annotations.csv" },
-];
+import {
+  FALLBACK_SOURCES,
+  buildTrack,
+  formatTime,
+  getActiveAnnotationIndex,
+  normalizeRows,
+  normalizeSheetUrl,
+  parseCsv,
+} from "./app-core.js";
+import WaveSurfer from "./vendor/wavesurfer.esm.js";
 
 const elements = {
   title: document.querySelector("#track-title"),
@@ -19,13 +16,15 @@ const elements = {
   messagePanel: document.querySelector("#message-panel"),
   playerPanel: document.querySelector("#player-panel"),
   audio: document.querySelector("#audio-player"),
-  annotationList: document.querySelector("#annotation-list"),
-  annotationCount: document.querySelector("#annotation-count"),
+  waveform: document.querySelector("#waveform-overview"),
+  waveformMarkers: document.querySelector("#waveform-markers"),
+  annotationCurrent: document.querySelector("#annotation-current"),
 };
 
 let annotations = [];
 let activeIndex = -1;
 let timeListenerAttached = false;
+let waveform = null;
 
 init().catch((error) => {
   showError("Unexpected error", error.message || "Something went wrong while loading the player.");
@@ -42,7 +41,15 @@ async function init() {
 
   showMessage("Loading track", "Fetching annotation data and preparing the audio player.", "loading");
 
-  const { rows, sourceLabel } = await loadRows(params);
+  let rows;
+
+  try {
+    ({ rows } = await loadRows(params));
+  } catch (error) {
+    showError("Data source error", error.message || "The requested annotation source could not be loaded.");
+    return;
+  }
+
   if (rows.length === 0) {
     showError("Missing data", "The selected data source did not contain any rows.");
     return;
@@ -56,7 +63,7 @@ async function init() {
 
   try {
     const track = buildTrack(trackRows, trackId);
-    renderTrack(track, sourceLabel);
+    renderTrack(track);
   } catch (error) {
     showError("Invalid track data", error.message || "The selected track could not be parsed.");
   }
@@ -71,7 +78,7 @@ async function loadRows(params) {
 
   if (sheetParam) {
     sources.push({
-      label: "Published Google Sheet",
+      label: "Sheet source",
       url: normalizeSheetUrl(sheetParam, gid),
     });
   } else if (dataParam) {
@@ -96,7 +103,7 @@ async function loadRows(params) {
 
       const resolvedUrl = response.url || new URL(source.url, window.location.href).href;
       const rows = await parseRowsFromResponse(response, resolvedUrl);
-      return { rows: normalizeRows(rows, resolvedUrl), sourceLabel: source.label };
+      return { rows: normalizeRows(rows, resolvedUrl) };
     } catch (error) {
       failures.push(`${source.label}: ${error.message}`);
     }
@@ -121,122 +128,22 @@ async function parseRowsFromResponse(response, sourceUrl) {
   return response.json();
 }
 
-function normalizeRows(rawRows, sourceUrl) {
-  if (!Array.isArray(rawRows)) {
-    throw new Error("Data source must return an array of rows.");
-  }
-
-  return rawRows.map((row, index) => {
-    if (!row || typeof row !== "object") {
-      throw new Error(`Row ${index + 1} is not a valid object.`);
-    }
-
-    const normalized = {};
-    for (const column of REQUIRED_COLUMNS) {
-      if (!(column in row)) {
-        throw new Error(`Missing required column "${column}".`);
-      }
-      normalized[column] = String(row[column] ?? "").trim();
-    }
-
-    const startSeconds = Number(normalized.start_seconds);
-    if (!Number.isFinite(startSeconds) || startSeconds < 0) {
-      throw new Error(`Invalid timestamp in row ${index + 1}.`);
-    }
-
-    if (!normalized.track_id || !normalized.title || !normalized.label || !normalized.comment) {
-      throw new Error(`Row ${index + 1} is missing required text fields.`);
-    }
-
-    if (!normalized.audio_url) {
-      throw new Error(`Missing audio URL in row ${index + 1}.`);
-    }
-
-    normalized.start_seconds = startSeconds;
-    normalized.audio_url = normalizeAudioUrl(normalized.audio_url, sourceUrl);
-    return normalized;
-  });
-}
-
-function buildTrack(trackRows, trackId) {
-  const sortedRows = [...trackRows].sort((a, b) => a.start_seconds - b.start_seconds);
-  const title = sortedRows[0].title;
-  const audioUrl = sortedRows[0].audio_url;
-
-  for (const row of sortedRows) {
-    if (row.title !== title) {
-      throw new Error(`Track "${trackId}" has inconsistent title values.`);
-    }
-
-    if (row.audio_url !== audioUrl) {
-      throw new Error(`Track "${trackId}" has inconsistent audio URLs.`);
-    }
-  }
-
-  return {
-    id: trackId,
-    title,
-    audioUrl,
-    annotations: sortedRows.map((row) => ({
-      startSeconds: row.start_seconds,
-      label: row.label,
-      comment: row.comment,
-    })),
-  };
-}
-
-function renderTrack(track, sourceLabel) {
+function renderTrack(track) {
   annotations = track.annotations;
   activeIndex = -1;
 
   elements.title.textContent = track.title;
   elements.meta.textContent = `${track.id} • ${annotations.length} annotation${annotations.length === 1 ? "" : "s"}`;
-  elements.annotationCount.textContent = `${annotations.length} cues`;
-  elements.sourceBadge.hidden = false;
-  elements.sourceBadge.textContent = sourceLabel;
+  elements.sourceBadge.hidden = true;
+  elements.sourceBadge.textContent = "";
   elements.playerPanel.hidden = false;
   elements.messagePanel.hidden = true;
-  elements.annotationList.innerHTML = "";
+  elements.annotationCurrent.innerHTML = "";
+  elements.waveformMarkers.innerHTML = "";
+  teardownWaveform();
+  elements.waveform.classList.remove("is-hidden");
+  renderCurrentAnnotation(-1);
 
-  for (const [index, annotation] of annotations.entries()) {
-    const item = document.createElement("li");
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "annotation-button";
-    button.dataset.index = String(index);
-
-    const line = document.createElement("div");
-    line.className = "annotation-line";
-
-    const timestamp = document.createElement("span");
-    timestamp.className = "timestamp";
-    timestamp.textContent = formatTime(annotation.startSeconds);
-
-    const label = document.createElement("span");
-    label.className = "annotation-label";
-    label.textContent = annotation.label;
-
-    const comment = document.createElement("p");
-    comment.className = "annotation-comment";
-    comment.textContent = annotation.comment;
-
-    line.append(timestamp, label);
-    button.append(line, comment);
-    button.addEventListener("click", () => {
-      elements.audio.currentTime = annotation.startSeconds;
-      if (elements.audio.paused) {
-        elements.audio.play().catch(() => {
-          updateActiveAnnotation(annotation.startSeconds);
-        });
-      }
-      updateActiveAnnotation(annotation.startSeconds);
-    });
-
-    item.append(button);
-    elements.annotationList.append(item);
-  }
-
-  elements.audio.src = track.audioUrl;
   elements.audio.onerror = () => {
     elements.playerPanel.hidden = true;
     showError("Audio failed to load", "The audio file could not be loaded. Check that the URL is public and browser-readable.");
@@ -248,7 +155,7 @@ function renderTrack(track, sourceLabel) {
     timeListenerAttached = true;
   }
 
-  elements.audio.load();
+  setupWaveform(track.audioUrl);
 }
 
 function handleTimeUpdate() {
@@ -256,25 +163,55 @@ function handleTimeUpdate() {
 }
 
 function updateActiveAnnotation(currentTime) {
-  let nextIndex = -1;
-
-  for (let index = 0; index < annotations.length; index += 1) {
-    if (annotations[index].startSeconds <= currentTime) {
-      nextIndex = index;
-    } else {
-      break;
-    }
-  }
+  const nextIndex = getActiveAnnotationIndex(annotations, currentTime);
 
   if (nextIndex === activeIndex) {
     return;
   }
+  renderCurrentAnnotation(nextIndex);
 
-  const buttons = elements.annotationList.querySelectorAll(".annotation-button");
-  buttons.forEach((button, index) => {
-    button.classList.toggle("active", index === nextIndex);
+  const markers = elements.waveformMarkers.querySelectorAll(".waveform-marker");
+  markers.forEach((marker, index) => {
+    marker.classList.toggle("active", index === nextIndex);
+    marker.setAttribute("aria-current", index === nextIndex ? "true" : "false");
   });
   activeIndex = nextIndex;
+}
+
+function renderCurrentAnnotation(index) {
+  elements.annotationCurrent.innerHTML = "";
+
+  if (index < 0 || index >= annotations.length) {
+    const empty = document.createElement("p");
+    empty.className = "annotation-empty";
+    empty.textContent = "Playback has not reached an annotation yet.";
+    elements.annotationCurrent.append(empty);
+    return;
+  }
+
+  const annotation = annotations[index];
+  const card = document.createElement("article");
+  card.className = "annotation-card active";
+  card.setAttribute("aria-current", "true");
+
+  const line = document.createElement("div");
+  line.className = "annotation-line";
+
+  const timestamp = document.createElement("span");
+  timestamp.className = "timestamp";
+  timestamp.textContent = formatTime(annotation.startSeconds);
+
+  const label = document.createElement("span");
+  label.className = "annotation-label";
+  label.textContent = annotation.label;
+
+  const comment = document.createElement("p");
+  comment.className = "annotation-comment";
+  comment.textContent = annotation.comment;
+
+  line.append(timestamp, label);
+  card.append(line, comment);
+  elements.annotationCurrent.append(card);
 }
 
 function showMessage(title, body, kind = "") {
@@ -294,124 +231,89 @@ function showMessage(title, body, kind = "") {
 }
 
 function showError(title, body) {
-  elements.title.textContent = "Canvas Audio Annotator";
+  teardownWaveform();
+  elements.title.textContent = "Audio Annotator";
   elements.meta.textContent = "Unable to display the requested track.";
+  elements.sourceBadge.hidden = true;
   elements.playerPanel.hidden = true;
   showMessage(title, body, "error");
 }
 
-function formatTime(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
-function normalizeSheetUrl(input, gid) {
-  if (/^https?:\/\//i.test(input)) {
-    if (input.includes("/pubhtml")) {
-      return input.replace("/pubhtml", "/pub?output=csv");
-    }
-
-    if (input.includes("output=csv") || input.includes("format=csv")) {
-      return input;
-    }
-
-    const url = new URL(input);
-    const match = url.pathname.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    if (!match) {
-      return input;
-    }
-
-    const hashMatch = url.hash.match(/gid=(\d+)/);
-    const resolvedGid = gid || url.searchParams.get("gid") || (hashMatch ? hashMatch[1] : "") || "0";
-    return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=${resolvedGid}`;
-  }
-
-  const resolvedGid = gid || "0";
-  return `https://docs.google.com/spreadsheets/d/${input}/export?format=csv&gid=${resolvedGid}`;
-}
-
-function normalizeAudioUrl(input, sourceUrl) {
-  const resolved = new URL(input, sourceUrl);
-
-  if (resolved.hostname.includes("drive.google.com")) {
-    const fileId = extractGoogleDriveFileId(resolved);
-    if (fileId) {
-      return `https://drive.google.com/uc?export=download&id=${fileId}`;
-    }
-  }
-
-  return resolved.href;
-}
-
-function extractGoogleDriveFileId(url) {
-  const pathMatch = url.pathname.match(/\/file\/d\/([^/]+)/);
-  if (pathMatch) {
-    return pathMatch[1];
-  }
-
-  return url.searchParams.get("id") || "";
-}
-
-function parseCsv(text) {
-  const rows = [];
-  let current = "";
-  let row = [];
-  let inQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const nextChar = text[index + 1];
-
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        current += '"';
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      row.push(current);
-      current = "";
-      continue;
-    }
-
-    if ((char === "\n" || char === "\r") && !inQuotes) {
-      if (char === "\r" && nextChar === "\n") {
-        index += 1;
-      }
-      row.push(current);
-      if (row.some((cell) => cell.trim() !== "")) {
-        rows.push(row);
-      }
-      row = [];
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  if (current.length > 0 || row.length > 0) {
-    row.push(current);
-    if (row.some((cell) => cell.trim() !== "")) {
-      rows.push(row);
-    }
-  }
-
-  if (rows.length < 2) {
-    return [];
-  }
-
-  const [header, ...dataRows] = rows;
-  return dataRows.map((cells) => {
-    const record = {};
-    header.forEach((column, index) => {
-      record[column.trim()] = (cells[index] || "").trim();
+function setupWaveform(audioUrl) {
+  try {
+    waveform = WaveSurfer.create({
+      container: elements.waveform,
+      media: elements.audio,
+      height: 96,
+      waveColor: "#b8c4cb",
+      progressColor: "#ee243c",
+      cursorColor: "#d81118",
+      cursorWidth: 2,
+      barWidth: 2,
+      barGap: 1,
+      barRadius: 2,
+      normalize: true,
+      hideScrollbar: true,
     });
-    return record;
-  });
+
+    waveform.on("error", () => {
+      teardownWaveform({ hideContainer: true });
+    });
+
+    waveform.on("ready", renderWaveformMarkers);
+    waveform.on("resize", renderWaveformMarkers);
+
+    waveform.load(audioUrl).catch(() => {
+      teardownWaveform({ hideContainer: true });
+    });
+  } catch {
+    teardownWaveform({ hideContainer: true });
+  }
+}
+
+function teardownWaveform(options = {}) {
+  const { hideContainer = false } = options;
+
+  if (waveform) {
+    waveform.destroy();
+    waveform = null;
+  }
+
+  if (hideContainer) {
+    elements.waveform.classList.add("is-hidden");
+  } else {
+    elements.waveform.innerHTML = "";
+  }
+
+  elements.waveformMarkers.innerHTML = "";
+}
+
+function renderWaveformMarkers() {
+  const duration = waveform?.getDuration() || elements.audio.duration || 0;
+  elements.waveformMarkers.innerHTML = "";
+
+  if (!duration || !Number.isFinite(duration)) {
+    return;
+  }
+
+  for (const annotation of annotations) {
+    const marker = document.createElement("button");
+    marker.type = "button";
+    marker.className = "waveform-marker";
+    marker.style.left = `${Math.min((annotation.startSeconds / duration) * 100, 100)}%`;
+    marker.setAttribute("aria-label", `${formatTime(annotation.startSeconds)} ${annotation.label}`);
+    marker.setAttribute("aria-current", "false");
+    marker.addEventListener("click", () => {
+      elements.audio.currentTime = annotation.startSeconds;
+      updateActiveAnnotation(annotation.startSeconds);
+      if (elements.audio.paused) {
+        elements.audio.play().catch(() => {
+          updateActiveAnnotation(annotation.startSeconds);
+        });
+      }
+    });
+    elements.waveformMarkers.append(marker);
+  }
+
+  updateActiveAnnotation(elements.audio.currentTime);
 }

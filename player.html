@@ -3,14 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Canvas Audio Annotator</title>
+    <meta
+      name="description"
+      content="Embedded audio player with timestamped annotations for Canvas and other LMS pages."
+    />
+    <title>Audio Annotator</title>
     <link rel="stylesheet" href="./assets/styles.css" />
   </head>
   <body>
     <main class="app-shell">
       <section class="player-card" aria-live="polite">
         <div class="status-row">
-          <p class="eyebrow">Canvas Audio Annotator</p>
           <span id="source-badge" class="source-badge" hidden></span>
         </div>
         <header class="player-header">
@@ -18,19 +21,22 @@
           <p id="track-meta" class="track-meta">Preparing the player.</p>
         </header>
 
-        <section id="message-panel" class="message-panel" hidden></section>
+        <section id="message-panel" class="message-panel" role="status" hidden></section>
 
         <section id="player-panel" hidden>
+          <section class="waveform-section" aria-label="Waveform">
+            <div class="waveform-shell">
+              <div id="waveform-overview" class="waveform-overview" aria-hidden="true"></div>
+              <div id="waveform-markers" class="waveform-markers" aria-label="Cue markers"></div>
+            </div>
+          </section>
+
           <audio id="audio-player" controls preload="metadata" class="audio-player">
             Your browser does not support HTML audio playback.
           </audio>
 
-          <section class="annotation-section" aria-labelledby="annotation-heading">
-            <div class="annotation-header">
-              <h2 id="annotation-heading">Annotations</h2>
-              <span id="annotation-count" class="annotation-count"></span>
-            </div>
-            <ol id="annotation-list" class="annotation-list"></ol>
+          <section class="annotation-section" aria-label="Annotation">
+            <div id="annotation-current" class="annotation-current" aria-live="polite"></div>
           </section>
         </section>
       </section>

@@ -12,6 +12,8 @@
   --accent: #ee243c;
   --accent-soft: color-mix(in srgb, #ee243c 10%, white);
   --accent-strong: #d81118;
+  --annotation-marker: #078baa;
+  --annotation-marker-strong: color-mix(in srgb, #078baa 88%, #25353c);
   --danger-soft: #fff0f0;
   --shadow: 0 0.38rem 0.8rem rgba(37, 53, 60, 0.08);
   --radius: 16px;
@@ -142,8 +144,75 @@ body.landing-page {
   margin-top: 14px;
 }
 
+.waveform-section,
 .annotation-section {
   margin-top: 16px;
+}
+
+.waveform-shell {
+  position: relative;
+  margin-top: 12px;
+}
+
+.waveform-overview {
+  min-height: 96px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(244, 247, 248, 0.98) 100%),
+    linear-gradient(90deg, rgba(238, 36, 60, 0.04) 0%, rgba(37, 53, 60, 0.03) 100%);
+  overflow: hidden;
+}
+
+.waveform-overview.is-hidden {
+  display: none;
+}
+
+.waveform-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.waveform-marker {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 12px;
+  margin-left: -6px;
+  border: 0;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.waveform-marker::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--annotation-marker);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+  opacity: 0.88;
+  transition: transform 120ms ease, opacity 120ms ease, background-color 120ms ease;
+}
+
+.waveform-marker:hover::before,
+.waveform-marker:focus-visible::before,
+.waveform-marker.active::before {
+  opacity: 1;
+  transform: translateX(-50%) scaleY(1.08);
+  background: var(--annotation-marker-strong);
+}
+
+.waveform-marker:focus-visible {
+  outline: none;
 }
 
 .annotation-header h2 {
@@ -151,14 +220,12 @@ body.landing-page {
   font-size: 1rem;
 }
 
-.annotation-list {
-  list-style: none;
+.annotation-current {
   margin: 12px 0 0;
   padding: 0;
-  display: grid;
-  gap: 8px;
 }
 
+.annotation-card,
 .annotation-button {
   width: 100%;
   border: 1px solid var(--border);
@@ -166,8 +233,11 @@ body.landing-page {
   background: linear-gradient(180deg, #ffffff 0%, #f4f7f8 100%);
   padding: 10px 12px;
   text-align: left;
-  cursor: pointer;
   transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+
+.annotation-button {
+  cursor: pointer;
 }
 
 .annotation-button:hover,
@@ -178,10 +248,25 @@ body.landing-page {
   transform: translateY(-1px);
 }
 
+.annotation-card.active,
 .annotation-button.active {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
   background: var(--accent-soft);
   box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.annotation-card[aria-current="true"] .annotation-label,
+.annotation-button[aria-current="true"] .annotation-label {
+  color: var(--accent-strong);
+}
+
+.annotation-empty {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, white 92%, var(--surface-muted));
 }
 
 .annotation-line {
@@ -233,6 +318,12 @@ body.landing-page {
 .landing-link:hover,
 .landing-link:focus-visible {
   background: var(--accent-strong);
+}
+
+.landing-link:focus-visible,
+.annotation-button:focus-visible,
+.waveform-marker:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, white);
 }
 
 code {
